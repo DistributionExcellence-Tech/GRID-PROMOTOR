@@ -390,14 +390,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {isRegionRole && <MapPin className="w-3 h-3 text-blue-400" />}
               {isCityRole && <Building className="w-3 h-3 text-indigo-400" />}
               {isSuperAdmin
-                ? 'SUPER ADMIN'
+                ? 'ROLE: SUPER ADMIN'
                 : isNasionalManager
-                ? 'NASIONAL (R/O)'
+                ? 'ROLE: NASIONAL (R/O)'
                 : isRegionRole
-                ? `REGION: ${user.scope}`
+                ? `ROLE: REGION (${user.scope})`
                 : isCityRole
-                ? `CITY: ${user.scope}`
-                : user.scope || 'PROMOTER'}
+                ? `ROLE: CITY (${user.scope})`
+                : `ROLE: PROMOTER (${user.scope})`}
             </span>
           </div>
           <p className={`text-[11px] font-mono truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{user.email}</p>
@@ -525,30 +525,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {showFilters && (
               <>
-                {/* Role-based Hierarchy Scope Notice - Hidden for non-admin roles as requested */}
-                {isSuperAdmin && isRegionRole && (
-                  <div className="bg-blue-950/60 border border-blue-500/30 rounded-lg p-2.5 flex items-start gap-2 text-xs text-blue-200 shadow-sm">
-                    <Lock className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                {/* Role Super Admin Notice */}
+                {isSuperAdmin && (
+                  <div className="bg-amber-950/50 border border-amber-500/40 rounded-lg p-2.5 flex items-start gap-2 text-xs text-amber-200 shadow-sm">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-bold text-[11px] text-blue-300 flex items-center gap-1">
-                        Scope Terkunci: REGION {user.scope}
+                      <div className="font-bold text-[11px] text-amber-300 flex items-center gap-1">
+                        Role: Super Admin (Akses Nasional)
                       </div>
-                      <div className="text-[10px] text-blue-300/80 leading-relaxed mt-0.5">
-                        Akses dibatasi khusus untuk data di wilayah region ini.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isSuperAdmin && isCityRole && (
-                  <div className="bg-indigo-950/60 border border-indigo-500/30 rounded-lg p-2.5 flex items-start gap-2 text-xs text-indigo-200 shadow-sm">
-                    <Lock className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-[11px] text-indigo-300 flex items-center gap-1">
-                        Scope Terkunci: CITY {user.scope}
-                      </div>
-                      <div className="text-[10px] text-indigo-300/80 leading-relaxed mt-0.5">
-                        Akses dibatasi khusus untuk data di kota/kabupaten ini.
+                      <div className="text-[10px] text-amber-300/80 leading-relaxed mt-0.5">
+                        Akses penuh tanpa batas: Anda dapat memilih seluruh Region, Province, dan City se-Indonesia.
                       </div>
                     </div>
                   </div>

@@ -318,8 +318,8 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // If Super Admin selected the dedicated CMS page view
-  if (currentView === 'cms' && user.role === 'ADMIN') {
+  // If Super Admin or Nasional Manager selected the dedicated CMS page view
+  if (currentView === 'cms' && (user.role === 'ADMIN' || user.role === 'NASIONAL_MANAGER')) {
     return (
       <div className={`${isDarkMode ? 'bg-[#060c1c] text-slate-100' : 'bg-slate-100 text-slate-900'} min-h-screen flex flex-col font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200`}>
         <CMSPage

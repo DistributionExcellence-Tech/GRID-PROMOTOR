@@ -7,7 +7,8 @@ import {
   AlertCircle,
   Eye,
   Lock,
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import type { UserProfile, GridItem } from '../types';
 import { api } from '../services/api';
@@ -178,6 +179,37 @@ export const FormPOIModule: React.FC<FormPOIModuleProps> = ({ user, grids, onOpe
             <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} font-medium`}>Survey & Update POI Lapangan</p>
           </div>
         </div>
+
+        {/* User Identity & Role Admin Badge */}
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              {user.name}
+            </div>
+            <div className={`text-[10px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              {user.email}
+            </div>
+          </div>
+          <span
+            className={`text-[11px] px-2.5 py-1 rounded-lg font-mono font-bold uppercase border flex items-center gap-1.5 shadow-xs ${
+              user.role === 'ADMIN'
+                ? isDarkMode
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-amber-100 text-amber-900 border-amber-300'
+                : user.role === 'NASIONAL_MANAGER'
+                ? isDarkMode
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  : 'bg-cyan-100 text-cyan-900 border-cyan-300'
+                : isDarkMode
+                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                : 'bg-blue-100 text-blue-900 border-blue-300'
+            }`}
+          >
+            {user.role === 'ADMIN' && <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
+            {user.role === 'NASIONAL_MANAGER' && <Eye className="w-3.5 h-3.5 text-cyan-400" />}
+            <span>{user.role === 'ADMIN' ? 'ROLE: SUPER ADMIN' : `ROLE: ${user.role}`}</span>
+          </span>
+        </div>
       </div>
 
       {/* Main View Area */}
@@ -220,10 +252,38 @@ export const FormPOIModule: React.FC<FormPOIModuleProps> = ({ user, grids, onOpe
                   Update POI <span className={`text-xs font-normal ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>(GPS, photo, & notes)</span>
                 </h2>
               </div>
-              <span className={`text-[11px] ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'} px-2 py-0.5 rounded font-mono font-semibold`}>
-                {user.name}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[11px] ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'} px-2 py-0.5 rounded font-mono font-semibold`}>
+                  {user.name}
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-extrabold uppercase border flex items-center gap-1 ${
+                  user.role === 'ADMIN'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}>
+                  {user.role === 'ADMIN' && <ShieldCheck className="w-3 h-3 text-amber-400" />}
+                  <span>{user.role === 'ADMIN' ? 'ROLE: ADMIN' : user.role}</span>
+                </span>
+              </div>
             </div>
+
+            {/* Role Admin Status Notice */}
+            {user.role === 'ADMIN' && (
+              <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3 flex items-start gap-2.5 text-amber-200 text-xs shadow-xs">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>Role: Super Admin (Akses Penuh)</span>
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold">
+                      ADMIN
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-amber-300/80 leading-relaxed mt-0.5">
+                    Sebagai Super Admin, Anda memiliki hak penuh untuk menginput, memverifikasi, dan mengelola seluruh database survei POI.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Read-Only Notice for NASIONAL_MANAGER */}
             {user.role === 'NASIONAL_MANAGER' && (

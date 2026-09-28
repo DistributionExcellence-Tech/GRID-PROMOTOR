@@ -12,7 +12,8 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Check,
-  Smartphone
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { api } from '../services/api';
@@ -288,6 +289,24 @@ export const NetworkCheckModule: React.FC<NetworkCheckModuleProps> = ({ user, is
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>4G LTE</span>
           </div>
+
+          {/* User Role Badge */}
+          {user && (
+            <span
+              className={`text-[11px] px-2.5 py-1.5 rounded-lg font-mono font-bold uppercase border flex items-center gap-1.5 ${
+                user.role === 'ADMIN'
+                  ? isDarkMode
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                  : isDarkMode
+                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                  : 'bg-blue-100 text-blue-900 border-blue-300'
+              }`}
+            >
+              {user.role === 'ADMIN' && <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
+              <span>{user.role === 'ADMIN' ? 'ROLE: SUPER ADMIN' : `ROLE: ${user.role}`}</span>
+            </span>
+          )}
         </div>
       </div>
 

@@ -128,6 +128,61 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <Lock className="w-3.5 h-3.5 text-slate-950" />
             <span>{loading ? 'Memvalidasi Keamanan...' : 'Masuk Aplikasi'}</span>
           </button>
+
+          {/* Quick Login Account Selector */}
+          <div className="pt-2 border-t border-slate-800 space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">
+              Pilih Role Akun Cepat:
+            </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('admin@xlsmart.co.id');
+                  setPassword('admin');
+                }}
+                className="bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-amber-300 rounded-lg p-2 text-[11px] text-left transition flex items-center gap-1.5 cursor-pointer"
+                title="Login sebagai Super Admin (admin@xlsmart.co.id)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate font-bold">Role: Super Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('chandra.prima0117@gmail.com');
+                  setPassword('admin');
+                }}
+                className="bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-amber-300 rounded-lg p-2 text-[11px] text-left transition flex items-center gap-1.5 cursor-pointer"
+                title="Login sebagai Chandra Prima (Admin)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate font-bold">Chandra (Admin)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('region.balinusra@xlsmart.co.id');
+                  setPassword('123');
+                }}
+                className="bg-slate-950 hover:bg-slate-800 border border-blue-500/40 text-blue-300 rounded-lg p-2 text-[11px] text-left transition flex items-center gap-1.5 cursor-pointer"
+                title="Login sebagai Bali Nusra Regional Manager"
+              >
+                <span className="truncate font-medium">Regional Bali Nusra</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('HARPA');
+                  setPassword('123');
+                }}
+                className="bg-slate-950 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 rounded-lg p-2 text-[11px] text-left transition flex items-center gap-1.5 cursor-pointer"
+                title="Login sebagai Harpa Sales Promoter"
+              >
+                <span className="truncate font-medium">Harpa Promoter</span>
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
