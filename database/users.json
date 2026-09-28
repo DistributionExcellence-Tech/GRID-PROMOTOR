@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "name": "Super Admin",
+    "role": "ADMIN",
+    "scope": "NASIONAL",
+    "email": "admin@xlsmart.co.id",
+    "password": "admin",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "2",
+    "name": "Nasional Manager",
+    "role": "NASIONAL_MANAGER",
+    "scope": "NASIONAL",
+    "email": "nasional.manager@xlsmart.co.id",
+    "password": "123",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "3",
+    "name": "Bali Nusra Manager",
+    "role": "REGION",
+    "scope": "BALI NUSRA",
+    "email": "region.balinusra@xlsmart.co.id",
+    "password": "123",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "4",
+    "name": "Bangkalan Specialist",
+    "role": "CITY",
+    "scope": "KAB. BANGKALAN",
+    "email": "city.bangkalan@xlsmart.co.id",
+    "password": "123",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "5",
+    "name": "Harpa Promoter",
+    "role": "PROMOTER",
+    "scope": "HARPA",
+    "email": "HARPA",
+    "password": "123",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "6",
+    "name": "Chandra Prima (Admin)",
+    "role": "ADMIN",
+    "scope": "NASIONAL",
+    "email": "chandra.prima0117@gmail.com",
+    "password": "admin",
+    "status": "ACTIVE"
+  }
+]

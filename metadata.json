@@ -1,0 +1,10 @@
+{
+  "name": "GRID Promotor Dashboard",
+  "description": "Telecom GIS Analytics \u0026 Grid Market Intelligence untuk prioritas akuisisi, pemetaan POI, dan penempatan BTS per grid terintegrasi database.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

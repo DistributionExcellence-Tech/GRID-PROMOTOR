@@ -1,0 +1,81 @@
+[
+  {
+    "id": "folder-nasional",
+    "name": "Nasional",
+    "description": "Dataset Master Nasional (Seluruh Region, Provinsi, Kota & BTS Terintegrasi)",
+    "region": "NASIONAL",
+    "city": "KOTA LHOKSEUMAWE",
+    "createdAt": "2026-09-23T09:30:00.000Z",
+    "updatedAt": "2026-09-24T11:07:58.152Z",
+    "gridCount": 40423,
+    "btsCount": 56981,
+    "poiCount": 40,
+    "isActive": true,
+    "files": [
+      {
+        "id": "file-1790248079017",
+        "name": "Grid_Master_SF_Prioritazion_Ver.8.geojson",
+        "type": "grid",
+        "size": 11318440,
+        "uploadedAt": "2026-09-24T11:07:58.152Z",
+        "recordCount": 40423
+      },
+      {
+        "id": "file-1790159100431",
+        "name": "Grid_Master_SF_Prioritazion_Ver.6.geojson",
+        "type": "grid",
+        "size": 7242760,
+        "uploadedAt": "2026-09-23T10:24:59.780Z",
+        "recordCount": 25867
+      },
+      {
+        "id": "file-1790246822962",
+        "name": "Template_BTS_Tower (7).xlsx",
+        "type": "bts",
+        "size": 15954680,
+        "uploadedAt": "2026-09-24T10:47:02.149Z",
+        "recordCount": 56981
+      },
+      {
+        "id": "file-1790158617419",
+        "name": "test_8k.xlsx",
+        "type": "bts",
+        "size": 761856,
+        "uploadedAt": "2026-09-23T10:16:57.419Z",
+        "recordCount": 4000
+      },
+      {
+        "id": "file-1790158606115",
+        "name": "test_upload.xlsx",
+        "type": "bts",
+        "size": 113,
+        "uploadedAt": "2026-09-23T10:16:46.115Z",
+        "recordCount": 1
+      },
+      {
+        "id": "file-nasional-grid",
+        "name": "Grid_Master_Nasional.xlsx",
+        "type": "grid",
+        "size": 198000,
+        "uploadedAt": "2026-09-23T09:30:00.000Z",
+        "recordCount": 809
+      },
+      {
+        "id": "file-nasional-bts",
+        "name": "BTS_Master_Nasional.xlsx",
+        "type": "bts",
+        "size": 64000,
+        "uploadedAt": "2026-09-23T09:30:00.000Z",
+        "recordCount": 60
+      },
+      {
+        "id": "file-nasional-poi",
+        "name": "POI_Master_Nasional.xlsx",
+        "type": "poi",
+        "size": 48000,
+        "uploadedAt": "2026-09-23T09:30:00.000Z",
+        "recordCount": 40
+      }
+    ]
+  }
+]
