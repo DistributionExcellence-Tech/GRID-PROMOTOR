@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db } from './server/data-store.ts';
@@ -6,6 +7,12 @@ import { db } from './server/data-store.ts';
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Ultra-fast HTTP payload compression (reduces JSON size by ~85% on the wire)
+  app.use(compression({
+    threshold: 1024,
+    level: 6
+  }));
 
   app.use(express.json({ limit: '150mb' }));
   app.use(express.urlencoded({ extended: true, limit: '150mb' }));

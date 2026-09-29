@@ -1157,6 +1157,12 @@ export class DataStore {
   private poiLogs: POIUpdateRecord[] = [];
   private networkLogs: SpeedTestResult[] = [];
   private folders: DatasetFolder[] = [];
+  // High-performance in-memory indexing for instantaneous region/city lookups
+  private regionGridsIndex = new Map<string, GridItem[]>();
+  private cityGridsIndex = new Map<string, GridItem[]>();
+  private regionBtsIndex = new Map<string, BTSItem[]>();
+  private regionPoisIndex = new Map<string, POIItem[]>();
+  private cachedGeoHierarchy: any = null;
   private users: UserProfile[] = [
     { id: '1', name: 'Super Admin', role: 'ADMIN', scope: 'NASIONAL', email: 'admin@xlsmart.co.id', password: 'admin', status: 'ACTIVE' },
     { id: '2', name: 'Nasional Manager', role: 'NASIONAL_MANAGER', scope: 'NASIONAL', email: 'nasional.manager@xlsmart.co.id', password: '123', status: 'ACTIVE' },
@@ -1343,6 +1349,7 @@ export class DataStore {
     }
 
     this.initFolders();
+    this.rebuildIndices();
   }
 
   public loadGridsFromCSV(): GridItem[] {
@@ -1442,17 +1449,76 @@ export class DataStore {
     this.saveAll();
   }
 
+  public rebuildIndices() {
+    this.regionGridsIndex.clear();
+    this.cityGridsIndex.clear();
+    this.regionBtsIndex.clear();
+    this.regionPoisIndex.clear();
+    this.cachedGeoHierarchy = null;
+
+    for (let i = 0; i < this.grids.length; i++) {
+      const g = this.grids[i];
+      const r = (g.region || g.Region || g.REGION || '').toUpperCase().trim();
+      if (r) {
+        let list = this.regionGridsIndex.get(r);
+        if (!list) {
+          list = [];
+          this.regionGridsIndex.set(r, list);
+        }
+        list.push(g);
+      }
+      const c = (g.city || g.City || g.CITY || '').toUpperCase().trim();
+      if (c) {
+        let list = this.cityGridsIndex.get(c);
+        if (!list) {
+          list = [];
+          this.cityGridsIndex.set(c, list);
+        }
+        list.push(g);
+      }
+    }
+
+    for (let i = 0; i < this.bts.length; i++) {
+      const b = this.bts[i];
+      const r = (b.region || b.Region || '').toUpperCase().trim();
+      if (r) {
+        let list = this.regionBtsIndex.get(r);
+        if (!list) {
+          list = [];
+          this.regionBtsIndex.set(r, list);
+        }
+        list.push(b);
+      }
+    }
+
+    for (let i = 0; i < this.pois.length; i++) {
+      const p = this.pois[i];
+      const r = (p.REGION || p.region || '').toUpperCase().trim();
+      if (r) {
+        let list = this.regionPoisIndex.get(r);
+        if (!list) {
+          list = [];
+          this.regionPoisIndex.set(r, list);
+        }
+        list.push(p);
+      }
+    }
+  }
+
   private saveGrids() {
+    this.rebuildIndices();
     const json = this.grids.length > 1000 ? JSON.stringify(this.grids) : JSON.stringify(this.grids, null, 2);
     fs.writeFileSync(GRIDS_FILE, json, 'utf-8');
 
-    // Also synchronize CSV database format
-    try {
-      const csv = this.convertGridsToCSV(this.grids);
-      fs.writeFileSync(GRIDS_CSV_FILE, csv, 'utf-8');
-    } catch (err) {
-      console.error('Error synchronizing grids.csv:', err);
-    }
+    // Synchronize CSV database format in background to keep upload and CRUD responses instantaneous
+    setImmediate(() => {
+      try {
+        const csv = this.convertGridsToCSV(this.grids);
+        fs.writeFileSync(GRIDS_CSV_FILE, csv, 'utf-8');
+      } catch (err) {
+        console.error('Error synchronizing grids.csv in background:', err);
+      }
+    });
   }
 
   public convertGridsToCSV(grids: GridItem[]): string {
@@ -1533,11 +1599,13 @@ export class DataStore {
   }
 
   private saveBTS() {
+    this.rebuildIndices();
     const json = this.bts.length > 1000 ? JSON.stringify(this.bts) : JSON.stringify(this.bts, null, 2);
     fs.writeFileSync(BTS_FILE, json, 'utf-8');
   }
 
   private savePOIs() {
+    this.rebuildIndices();
     const json = this.pois.length > 1000 ? JSON.stringify(this.pois) : JSON.stringify(this.pois, null, 2);
     fs.writeFileSync(POI_FILE, json, 'utf-8');
   }
@@ -1547,13 +1615,14 @@ export class DataStore {
   }
 
   public saveAll() {
+    this.rebuildIndices();
     this.saveGrids();
     this.saveBTS();
     this.savePOIs();
     this.saveUsers();
   }
 
-  // Grids operations
+  // Grids operations (Ultra-fast index-assisted scan)
   public getGrids(filters?: {
     region?: string;
     province?: string;
@@ -1561,61 +1630,83 @@ export class DataStore {
     kecamatan?: string;
     category?: string;
     search?: string;
+    limit?: number;
   }): GridItem[] {
-    let result = [...this.grids];
-
-    if (filters) {
-      if (filters.region && filters.region !== 'ALL') {
-        const tr = filters.region.toUpperCase().trim();
-        result = result.filter(g => {
-          const r = (g.region || g.Region || g.REGION || '').toUpperCase().trim();
-          return r === tr || r === 'ALL' || r === 'NASIONAL';
-        });
-      }
-      if (filters.province && filters.province !== 'ALL') {
-        const cleanTarget = filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim();
-        result = result.filter(g => {
-          const prov = (g.province || g.Province || g.PROVINCE || '').toUpperCase().trim();
-          const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
-          return prov === filters.province!.toUpperCase().trim() || cleanProv === cleanTarget;
-        });
-      }
-      if (filters.city && filters.city !== 'ALL') {
-        const tc = filters.city.toUpperCase().trim();
-        result = result.filter(g => {
-          const c = (g.city || g.City || g.CITY || '').toUpperCase().trim();
-          return c === tc || (tc.includes('BANGKALAN') && c.includes('BANGKALAN'));
-        });
-      }
-      if (filters.kecamatan && filters.kecamatan !== 'ALL') {
-        const targetKec = filters.kecamatan.toLowerCase().trim();
-        result = result.filter(g => (g.kecamatan || g.Kecamatan || g.KECAMATAN || '').toLowerCase().trim() === targetKec);
-      }
-      if (filters.category) {
-        const cats = filters.category.split(',').map(c => c.trim());
-        if (cats.length > 0 && cats[0] !== 'ALL') {
-          result = result.filter(g => {
-            const cat = g['SF Grid Category'] || g.SF_Grid_Category || g.cat;
-            return cats.includes(cat);
-          });
-        }
-      }
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        result = result.filter(g => 
-          g.id.toLowerCase().includes(q) || 
-          (g.sitename && g.sitename.toLowerCase().includes(q)) ||
-          (g.GRID_META_ID && g.GRID_META_ID.toLowerCase().includes(q)) ||
-          (g.site_type && g.site_type.toLowerCase().includes(q)) ||
-          (g.Device_Status && g.Device_Status.toLowerCase().includes(q)) ||
-          (g.Revenue_Flag && g.Revenue_Flag.toLowerCase().includes(q)) ||
-          g.kecamatan.toLowerCase().includes(q) ||
-          g.city.toLowerCase().includes(q)
-        );
-      }
+    if (!filters) {
+      return this.grids.slice(0, 5000);
     }
 
-    return result;
+    const tr = filters.region && filters.region !== 'ALL' ? filters.region.toUpperCase().trim() : null;
+    const cleanTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim() : null;
+    const rawTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.toUpperCase().trim() : null;
+    const tc = filters.city && filters.city !== 'ALL' ? filters.city.toUpperCase().trim() : null;
+    const targetKec = filters.kecamatan && filters.kecamatan !== 'ALL' ? filters.kecamatan.toLowerCase().trim() : null;
+    const cats = filters.category && filters.category !== 'ALL' ? new Set(filters.category.split(',').map(c => c.trim())) : null;
+    const q = filters.search ? filters.search.toLowerCase().trim() : null;
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : 0;
+
+    // Use in-memory index to dramatically narrow search space
+    let sourceArray = this.grids;
+    if (tc && this.cityGridsIndex.has(tc)) {
+      sourceArray = this.cityGridsIndex.get(tc)!;
+    } else if (tr && this.regionGridsIndex.has(tr)) {
+      sourceArray = this.regionGridsIndex.get(tr)!;
+    }
+
+    const matched: GridItem[] = [];
+
+    for (let i = 0; i < sourceArray.length; i++) {
+      const g = sourceArray[i];
+
+      if (tr && sourceArray === this.grids) {
+        const r = (g.region || g.Region || g.REGION || '').toUpperCase().trim();
+        if (r !== tr && r !== 'ALL' && r !== 'NASIONAL') continue;
+      }
+
+      if (cleanTargetProv) {
+        const prov = (g.province || g.Province || g.PROVINCE || '').toUpperCase().trim();
+        const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
+        if (prov !== rawTargetProv && cleanProv !== cleanTargetProv) continue;
+      }
+
+      if (tc && sourceArray !== this.cityGridsIndex.get(tc)) {
+        const c = (g.city || g.City || g.CITY || '').toUpperCase().trim();
+        if (c !== tc && !(tc.includes('BANGKALAN') && c.includes('BANGKALAN'))) continue;
+      }
+
+      if (targetKec) {
+        const kec = (g.kecamatan || g.Kecamatan || g.KECAMATAN || '').toLowerCase().trim();
+        if (kec !== targetKec) continue;
+      }
+
+      if (cats && cats.size > 0) {
+        const cat = g['SF Grid Category'] || g.SF_Grid_Category || g.cat;
+        if (!cat || !cats.has(cat)) continue;
+      }
+
+      if (q) {
+        const match = 
+          g.id.toLowerCase().includes(q) || 
+          (g.sitename && g.sitename.toLowerCase().includes(q)) || 
+          (g.GRID_META_ID && g.GRID_META_ID.toLowerCase().includes(q)) || 
+          (g.site_type && g.site_type.toLowerCase().includes(q)) || 
+          (g.Device_Status && g.Device_Status.toLowerCase().includes(q)) || 
+          (g.Revenue_Flag && g.Revenue_Flag.toLowerCase().includes(q)) || 
+          g.kecamatan.toLowerCase().includes(q) || 
+          g.city.toLowerCase().includes(q);
+        if (!match) continue;
+      }
+
+      matched.push(g);
+      if (limit > 0 && matched.length >= limit) break;
+    }
+
+    // Safety cap when no location filter is active
+    if (!tr && !cleanTargetProv && !tc && !targetKec && !cats && !q && matched.length > 6000) {
+      return matched.slice(0, 6000);
+    }
+
+    return matched;
   }
 
   public getGridById(id: string): GridItem | undefined {
@@ -1653,36 +1744,52 @@ export class DataStore {
     return false;
   }
 
-  // BTS operations
+  // BTS operations (Ultra-fast index-assisted scan)
   public getBTS(filters?: { region?: string; province?: string; city?: string; kec?: string; rev?: string; search?: string; limit?: number }): BTSItem[] {
-    let result = [...this.bts];
-    if (filters) {
-      if (filters.region && filters.region !== 'ALL') {
-        const tr = filters.region.toUpperCase().trim();
-        result = result.filter(b => (b.region || b.Region || '').toUpperCase().trim() === tr);
+    if (!filters) return this.bts;
+
+    const tr = filters.region && filters.region !== 'ALL' ? filters.region.toUpperCase().trim() : null;
+    const cleanTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim() : null;
+    const rawTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.toUpperCase().trim() : null;
+    const tc = filters.city && filters.city !== 'ALL' ? filters.city.toUpperCase().trim() : null;
+    const targetKec = filters.kec && filters.kec !== 'ALL' ? filters.kec.toLowerCase().trim() : null;
+    const rev = filters.rev && filters.rev !== 'ALL' ? filters.rev : null;
+    const q = filters.search ? filters.search.toLowerCase().trim() : null;
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : 0;
+
+    let sourceBts = (tr && this.regionBtsIndex.has(tr)) ? this.regionBtsIndex.get(tr)! : this.bts;
+    const matched: BTSItem[] = [];
+
+    for (let i = 0; i < sourceBts.length; i++) {
+      const b = sourceBts[i];
+
+      if (tr && sourceBts === this.bts) {
+        const r = (b.region || b.Region || '').toUpperCase().trim();
+        if (r !== tr) continue;
       }
-      if (filters.province && filters.province !== 'ALL') {
-        const cleanTarget = filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim();
-        result = result.filter(b => {
-          const prov = (b.province || b.Province || '').toUpperCase().trim();
-          const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
-          return prov === filters.province!.toUpperCase().trim() || cleanProv === cleanTarget;
-        });
+
+      if (cleanTargetProv) {
+        const prov = (b.province || b.Province || '').toUpperCase().trim();
+        const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
+        if (prov !== rawTargetProv && cleanProv !== cleanTargetProv) continue;
       }
-      if (filters.city && filters.city !== 'ALL') {
-        const tc = filters.city.toUpperCase().trim();
-        result = result.filter(b => (b.city || b.City || '').toUpperCase().trim() === tc);
+
+      if (tc) {
+        const c = (b.city || b.City || '').toUpperCase().trim();
+        if (c !== tc) continue;
       }
-      if (filters.kec && filters.kec !== 'ALL') {
-        const targetKec = filters.kec.toLowerCase().trim();
-        result = result.filter(b => (b.kec && b.kec.toLowerCase().trim() === targetKec) || (b.Kecamatan && b.Kecamatan.toLowerCase().trim() === targetKec));
+
+      if (targetKec) {
+        const k = (b.kec || b.Kecamatan || '').toLowerCase().trim();
+        if (k !== targetKec) continue;
       }
-      if (filters.rev && filters.rev !== 'ALL') {
-        result = result.filter(b => b.rev === filters.rev || b['Revenue Flag'] === filters.rev);
+
+      if (rev) {
+        if (b.rev !== rev && b['Revenue Flag'] !== rev) continue;
       }
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        result = result.filter(b => 
+
+      if (q) {
+        const match = 
           b.id.toLowerCase().includes(q) ||
           (b.sitename && b.sitename.toLowerCase().includes(q)) ||
           (b.name && b.name.toLowerCase().includes(q)) ||
@@ -1691,14 +1798,15 @@ export class DataStore {
           (b['Site Function'] && b['Site Function'].toLowerCase().includes(q)) ||
           (b['BSP Data'] && b['BSP Data'].toLowerCase().includes(q)) ||
           (b.Kecamatan && b.Kecamatan.toLowerCase().includes(q)) ||
-          (b.City && b.City.toLowerCase().includes(q))
-        );
+          (b.City && b.City.toLowerCase().includes(q));
+        if (!match) continue;
       }
-      if (filters.limit && filters.limit > 0 && result.length > filters.limit) {
-        result = result.slice(0, filters.limit);
-      }
+
+      matched.push(b);
+      if (limit > 0 && matched.length >= limit) break;
     }
-    return result;
+
+    return matched;
   }
 
   public addBTS(bts: BTSItem): BTSItem {
@@ -1732,38 +1840,51 @@ export class DataStore {
     return false;
   }
 
-  // POIs
+  // POIs (Ultra-fast index-assisted scan)
   public getPOIs(filters?: { region?: string; province?: string; city?: string; kec?: string } | string): POIItem[] {
-    let result = [...this.pois];
     if (typeof filters === 'string') {
-      if (filters && filters !== 'ALL') {
-        result = result.filter(p => p.city === filters || p['XLS CITY'] === filters);
-      }
-      return result;
+      if (!filters || filters === 'ALL') return this.pois;
+      return this.pois.filter(p => p.city === filters || p['XLS CITY'] === filters);
     }
-    if (filters) {
-      if (filters.region && filters.region !== 'ALL') {
-        const tr = filters.region.toUpperCase().trim();
-        result = result.filter(p => (p.REGION || p.region || '').toUpperCase().trim() === tr);
+    if (!filters) return this.pois;
+
+    const tr = filters.region && filters.region !== 'ALL' ? filters.region.toUpperCase().trim() : null;
+    const cleanTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim() : null;
+    const rawTargetProv = filters.province && filters.province !== 'ALL' ? filters.province.toUpperCase().trim() : null;
+    const tc = filters.city && filters.city !== 'ALL' ? filters.city.toUpperCase().trim() : null;
+    const targetKec = filters.kec && filters.kec !== 'ALL' ? filters.kec.toLowerCase().trim() : null;
+
+    let sourcePois = (tr && this.regionPoisIndex.has(tr)) ? this.regionPoisIndex.get(tr)! : this.pois;
+    const matched: POIItem[] = [];
+
+    for (let i = 0; i < sourcePois.length; i++) {
+      const p = sourcePois[i];
+
+      if (tr && sourcePois === this.pois) {
+        const r = (p.REGION || p.region || '').toUpperCase().trim();
+        if (r !== tr) continue;
       }
-      if (filters.province && filters.province !== 'ALL') {
-        const cleanTarget = filters.province.replace(/\s*\(\d+\)\s*$/, '').toUpperCase().trim();
-        result = result.filter(p => {
-          const prov = (p.PROVINCE || p.province || '').toUpperCase().trim();
-          const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
-          return prov === filters.province!.toUpperCase().trim() || cleanProv === cleanTarget;
-        });
+
+      if (cleanTargetProv) {
+        const prov = (p.PROVINCE || p.province || '').toUpperCase().trim();
+        const cleanProv = prov.replace(/\s*\(\d+\)\s*$/, '').trim();
+        if (prov !== rawTargetProv && cleanProv !== cleanTargetProv) continue;
       }
-      if (filters.city && filters.city !== 'ALL') {
-        const tc = filters.city.toUpperCase().trim();
-        result = result.filter(p => (p['XLS CITY'] || p.city || '').toUpperCase().trim() === tc);
+
+      if (tc) {
+        const c = (p['XLS CITY'] || p.city || '').toUpperCase().trim();
+        if (c !== tc) continue;
       }
-      if (filters.kec && filters.kec !== 'ALL') {
-        const targetKec = filters.kec.toLowerCase().trim();
-        result = result.filter(p => ((p.KECAMATAN || '').toLowerCase().trim() === targetKec) || ((p.kec || '').toLowerCase().trim() === targetKec));
+
+      if (targetKec) {
+        const k = (p.KECAMATAN || p.kec || '').toLowerCase().trim();
+        if (k !== targetKec) continue;
       }
+
+      matched.push(p);
     }
-    return result;
+
+    return matched;
   }
 
   public addPOI(poi: any): POIItem {
@@ -1996,8 +2117,12 @@ export class DataStore {
     };
   }
 
-  // Dynamic Geographic Hierarchy derived strictly from GRID dataset
+  // Dynamic Geographic Hierarchy derived strictly from GRID dataset (Memoized in memory for 0ms response)
   public getGeoHierarchy() {
+    if (this.cachedGeoHierarchy) {
+      return this.cachedGeoHierarchy;
+    }
+
     const hierarchy: Record<string, Record<string, Record<string, string[]>>> = {};
 
     const addEntry = (regionRaw?: string, provinceRaw?: string, cityRaw?: string, kecRaw?: string) => {
@@ -2059,6 +2184,7 @@ export class DataStore {
       }
     }
 
+    this.cachedGeoHierarchy = hierarchy;
     return hierarchy;
   }
 

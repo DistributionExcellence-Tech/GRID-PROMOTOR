@@ -242,45 +242,57 @@ export const GridTable: React.FC<GridTableProps> = ({
     });
   };
 
-  const exportExcel = () => {
-    if (activeTab === 'grid') {
-      const exportData = getExportGridRows();
-      const ws = XLSX.utils.json_to_sheet(exportData);
+  const downloadRawGrid = (format: 'xlsx' | 'csv' = 'xlsx') => {
+    const exportData = getExportGridRows();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    if (format === 'xlsx') {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'GRID_Master');
-      XLSX.writeFile(wb, `GRID_Master_23Headers_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `GRID_Raw_Data_23Headers_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } else {
-      const exportData = getExportBTSRows();
-      const ws = XLSX.utils.json_to_sheet(exportData);
+      const csvContent = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GRID_Raw_Data_23Headers_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const downloadRawBTS = (format: 'xlsx' | 'csv' = 'xlsx') => {
+    const exportData = getExportBTSRows();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    if (format === 'xlsx') {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'BTS_Master');
-      XLSX.writeFile(wb, `BTS_Master_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `BTS_Raw_Data_16Headers_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } else {
+      const csvContent = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `BTS_Raw_Data_16Headers_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const exportExcel = () => {
+    if (activeTab === 'grid') {
+      downloadRawGrid('xlsx');
+    } else {
+      downloadRawBTS('xlsx');
     }
   };
 
   const exportCSV = () => {
     if (activeTab === 'grid') {
-      const exportData = getExportGridRows();
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const csvContent = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `GRID_Master_23Headers_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadRawGrid('csv');
     } else {
-      const exportData = getExportBTSRows();
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const csvContent = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `BTS_Master_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadRawBTS('csv');
     }
   };
 
@@ -491,60 +503,40 @@ export const GridTable: React.FC<GridTableProps> = ({
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
           </div>
 
-          {/* Export Buttons - Hidden per user request */}
-          <div className="hidden items-center gap-1.5 flex-wrap justify-end">
-            {activeTab === 'grid' && (
-              <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-lg p-0.5">
-                <button
-                  onClick={() => downloadGridTemplate('csv')}
-                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 text-[11px] font-bold px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer"
-                  title="Unduh Contoh/Template CSV (23 Header Sesuai Standar)"
-                >
-                  <Download className="w-3 h-3" />
-                  <span>Template CSV</span>
-                </button>
-                <span className="text-amber-500/40 text-xs">|</span>
-                <button
-                  onClick={() => downloadGridTemplate('xlsx')}
-                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 text-[11px] font-bold px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer"
-                  title="Unduh Contoh/Template XLS (23 Header Sesuai Standar)"
-                >
-                  <FileSpreadsheet className="w-3 h-3" />
-                  <span>XLS</span>
-                </button>
-              </div>
-            )}
-
-            {activeTab === 'grid' && (
-              <button
-                onClick={downloadFullDatabaseCSV}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-                title="Unduh Seluruh Database GRID dalam Format CSV"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>DB CSV</span>
-              </button>
-            )}
-
+          {/* Download Raw Data GRID & BTS Actions */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Raw GRID Download Button */}
             <button
-              onClick={exportExcel}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-              title={`Unduh Excel ${activeTab === 'grid' ? 'Grid (23 Kolom)' : 'BTS (16 Kolom)'}`}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={exportCSV}
-              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer ${
-                isDarkMode
-                  ? 'bg-[#0d1b3e] hover:bg-[#122452] text-blue-300 border border-blue-900/50'
-                  : 'bg-slate-700 hover:bg-slate-800 text-white'
+              onClick={() => downloadRawGrid('xlsx')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm border cursor-pointer ${
+                activeTab === 'grid'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400/50 shadow-blue-900/30'
+                  : isDarkMode
+                  ? 'bg-[#060c1c] hover:bg-blue-950/60 text-blue-300 border-blue-900/60'
+                  : 'bg-white hover:bg-blue-50 text-blue-700 border-blue-300'
               }`}
-              title={`Unduh CSV ${activeTab === 'grid' ? 'Grid (23 Kolom)' : 'BTS (16 Kolom)'}`}
+              title={`Download Raw Data GRID (${filteredGrids.length} Titik • 23 Kolom Database Standar) dalam format Excel`}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>CSV</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-200" />
+              <span>Download GRID</span>
+              <span className="text-[10px] px-1 py-0.2 rounded bg-black/20 font-mono">.xlsx</span>
+            </button>
+
+            {/* Raw BTS Download Button */}
+            <button
+              onClick={() => downloadRawBTS('xlsx')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm border cursor-pointer ${
+                activeTab === 'bts'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-900/30'
+                  : isDarkMode
+                  ? 'bg-[#060c1c] hover:bg-emerald-950/60 text-emerald-300 border-emerald-900/60'
+                  : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-300'
+              }`}
+              title={`Download Raw Data BTS (${filteredBTS.length} Tower • 16 Kolom Master) dalam format Excel`}
+            >
+              <TowerIcon size={13} />
+              <span>Download BTS</span>
+              <span className="text-[10px] px-1 py-0.2 rounded bg-black/20 font-mono">.xlsx</span>
             </button>
           </div>
         </div>

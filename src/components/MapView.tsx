@@ -42,6 +42,334 @@ interface MapViewProps {
   onEditBTS?: (bts: BTSItem) => void;
   focusedLocation?: { lat: number; lng: number } | null;
   isDarkMode?: boolean;
+  selectedRegion?: string;
+  selectedCity?: string;
+  loading?: boolean;
+}
+
+// Instant Geo-Coordinates Lookup for Ultra-Fast Region/City Navigation
+export const REGION_CENTERS: Record<string, { center: [number, number]; zoom: number }> = {
+  'EAST JAVA': { center: [-7.5360, 112.2384], zoom: 8 },
+  'JAWA TIMUR': { center: [-7.5360, 112.2384], zoom: 8 },
+  'CENTRAL JAVA': { center: [-7.1509, 110.1402], zoom: 8 },
+  'JAWA TENGAH': { center: [-7.1509, 110.1402], zoom: 8 },
+  'WEST JAVA': { center: [-6.9175, 107.6191], zoom: 8 },
+  'JAWA BARAT': { center: [-6.9175, 107.6191], zoom: 8 },
+  'JAKARTA BANTEN': { center: [-6.2088, 106.8456], zoom: 10 },
+  'JABODETABEK': { center: [-6.2088, 106.8456], zoom: 10 },
+  'BALI NUSRA': { center: [-8.4095, 115.1889], zoom: 9 },
+  'BALI': { center: [-8.4095, 115.1889], zoom: 9 },
+  'NORTHERN SUMATRA': { center: [2.1154, 99.5451], zoom: 7 },
+  'SUMATERA UTARA': { center: [2.1154, 99.5451], zoom: 7 },
+  'SOUTHERN SUMATRA': { center: [-3.3194, 104.3774], zoom: 7 },
+  'SUMATERA SELATAN': { center: [-3.3194, 104.3774], zoom: 7 },
+  'KALIMANTAN': { center: [-1.2654, 115.0000], zoom: 7 },
+  'SULAWESI': { center: [-2.5489, 121.0000], zoom: 7 },
+  'PAPUA MALUKU': { center: [-3.5000, 135.0000], zoom: 6 },
+  'ALL': { center: [-2.5489, 118.0149], zoom: 5 }
+};
+
+export const CITY_CENTERS: Record<string, { center: [number, number]; zoom: number }> = {
+  'KAB. BANGKALAN': { center: [-7.0450, 112.9300], zoom: 11 },
+  'BANGKALAN': { center: [-7.0450, 112.9300], zoom: 11 },
+  'KOTA SURABAYA': { center: [-7.2575, 112.7521], zoom: 12 },
+  'SURABAYA': { center: [-7.2575, 112.7521], zoom: 12 },
+  'KOTA DENPASAR': { center: [-8.6705, 115.2126], zoom: 12 },
+  'DENPASAR': { center: [-8.6705, 115.2126], zoom: 12 },
+  'KOTA SEMARANG': { center: [-6.9667, 110.4167], zoom: 12 },
+  'KOTA BANDUNG': { center: [-6.9175, 107.6191], zoom: 12 },
+  'KOTA JAKARTA PUSAT': { center: [-6.1805, 106.8284], zoom: 12 },
+  'KOTA MEDAN': { center: [3.5952, 98.6722], zoom: 12 },
+  'KOTA MAKASSAR': { center: [-5.1477, 119.4327], zoom: 12 },
+  'KOTA PALEMBANG': { center: [-2.9761, 104.7754], zoom: 12 }
+};
+
+// BTS Revenue Categories Config
+export const BTS_REV_CONFIG = [
+  { key: 'Rev >40 Mn', label: 'Rev >40 Mn', color: '#3b82f6' },
+  { key: 'Rev 30-40 Mn', label: 'Rev 30-40 Mn', color: '#10b981' },
+  { key: 'Rev 20-30 Mn', label: 'Rev 20-30 Mn', color: '#f59e0b' },
+  { key: 'Rev <20 Mn', label: 'Rev <20 Mn', color: '#ef4444' },
+  { key: 'Rev 0', label: 'Rev 0', color: '#78350f' },
+  { key: 'Unknown', label: 'Unknown', color: '#64748b' }
+];
+
+export function getPoiCategoryIcon(type: string): string {
+  const t = (type || '').toLowerCase().trim();
+  if (t.includes('tourist') || t.includes('wisata') || t.includes('attraction')) return '🏞️';
+  if (t.includes('park') || t.includes('taman')) return '🌳';
+  if (t.includes('department') || t.includes('mall') || t.includes('plaza')) return '🏬';
+  if (t.includes('amusement') || t.includes('hiburan') || t.includes('wahana')) return '🎡';
+  if (t.includes('gas') || t.includes('spbu') || t.includes('bensin') || t.includes('fuel')) return '⛽';
+  if (t.includes('bus') || t.includes('halte') || t.includes('terminal')) return '🚌';
+  if (t.includes('community') || t.includes('balai') || t.includes('center') || t.includes('komunitas')) return '🏬';
+  if (t.includes('govern') || t.includes('pemerintah') || t.includes('kantor') || t.includes('dinas')) return '🏛️';
+  if (t.includes('hospital') || t.includes('rumah sakit') || t.includes('klinik') || t.includes('puskesmas') || t.includes('medik')) return '🏥';
+  if (t.includes('supermarket') || t.includes('swalayan') || t.includes('hypermart') || t.includes('minimarket') || t.includes('indomaret') || t.includes('alfamart')) return '🛒';
+  if (t.includes('market') || t.includes('pasar') || t.includes('toko') || t.includes('bunga')) return '🏪';
+  if (t.includes('hotel') || t.includes('penginapan') || t.includes('villa') || t.includes('resort') || t.includes('inn')) return '🏨';
+  if (t.includes('restaurant') || t.includes('resto') || t.includes('cafe') || t.includes('kuliner') || t.includes('warung') || t.includes('makan') || t.includes('food')) return '🍽️';
+  if (t.includes('school') || t.includes('kampus') || t.includes('sekolah') || t.includes('universitas') || t.includes('sd') || t.includes('smp') || t.includes('sma')) return '🏫';
+  if (t.includes('worship') || t.includes('mosque') || t.includes('masjid') || t.includes('musholla') || t.includes('church') || t.includes('gereja') || t.includes('temple') || t.includes('pura')) return '🕌';
+  if (t.includes('bank') || t.includes('atm')) return '🏦';
+  if (t.includes('pharmacy') || t.includes('apotek') || t.includes('obat')) return '💊';
+  if (t.includes('transport') || t.includes('stasiun') || t.includes('station') || t.includes('kereta') || t.includes('train')) return '🚉';
+  if (t.includes('airport') || t.includes('bandara')) return '✈️';
+  if (t.includes('harbor') || t.includes('port') || t.includes('pelabuhan')) return '⚓';
+  if (t.includes('police') || t.includes('polisi') || t.includes('pos')) return '👮';
+  if (t.includes('outlet') || t.includes('store') || t.includes('counter') || t.includes('cell')) return '📱';
+  return '📍';
+}
+
+// Lazy popup HTML builder for Grid (zero memory overhead until clicked)
+function buildGridPopupHtml(grid: GridItem, isDarkMode: boolean, isAdmin: boolean): string {
+  const gridId = String(grid.GRID_ID || grid.id || '');
+  const city = grid.CITY || grid.City || grid.city || 'KAB. BANGKALAN';
+  const sfCat = grid['SF Grid Category'] || grid.SF_Grid_Category || grid.cat || 'Avoid Cannibalism';
+  const catTheme = getCategoryTheme(sfCat);
+  const promotor = grid['Mapping Promotor'] || grid.prom || 'MULTIBRAND';
+  const population = typeof grid.POPULATION === 'number' ? grid.POPULATION : (grid.pop || 5000);
+  const msXLCo = formatMSAbsolute(grid['MS_XLCo.'] ?? grid.xlco ?? '0');
+  const msSF = formatMSAbsolute(grid.MS_SF ?? grid.sf ?? '0');
+  const msIM3 = formatMSAbsolute(grid.MS_IM3 ?? grid.im3 ?? '0');
+  const ms3TRI = formatMSAbsolute(grid.MS_3TRI ?? grid.tri ?? '0');
+  const msTSEL = formatMSAbsolute(grid.MS_TSEL ?? grid.tsel ?? '0');
+  const msXLS = formatMSAbsolute(grid.MS_XLS ?? grid.xl ?? grid.xls ?? '0');
+  const msIOH = formatMSAbsolute(grid.MS_IOH ?? grid.ioh ?? '0');
+  const p10XLCo = String(grid.P10_DL_Speed_XLCo || '16.4 Mbps');
+  const p10SF = String(grid.P10_DL_Speed_SF || (sfCat === '1st Priority Acquisition' ? '22.8 Mbps' : '14.5 Mbps'));
+  const totalPoi = typeof grid.TOTAL_POI === 'number' ? grid.TOTAL_POI : (grid.poi || 0);
+  const totalBts = typeof grid.TOTAL_BTS === 'number' ? grid.TOTAL_BTS : (grid.bts || 0);
+
+  const centerLat = typeof grid['Center Lat'] === 'number'
+    ? grid['Center Lat']
+    : (grid.latitude !== undefined ? grid.latitude : (grid.center?.[0] ?? -7.05));
+  const centerLng = typeof grid['Center Long'] === 'number'
+    ? grid['Center Long']
+    : (grid.longitude !== undefined ? grid.longitude : (grid.center?.[1] ?? 112.9));
+
+  const catBadgeColor = catTheme.hex;
+  const catIcon = sfCat === '1st Priority Acquisition' ? '🎯'
+    : sfCat === '2nd Priority Acquisition' ? '⚡'
+    : sfCat === '3rd Priority' ? '⚠️'
+    : '🛡️';
+
+  if (isDarkMode) {
+    return `
+      <div class="space-y-2 text-slate-100 font-sans min-w-[250px] max-w-[300px] p-1">
+        <div class="text-xs text-slate-300 space-y-1.5 leading-snug">
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">Grid ID:</span> <span class="font-mono text-white font-bold">${gridId}</span></div>
+          <div class="font-extrabold text-blue-300 uppercase tracking-wide text-xs">${city.toUpperCase()}</div>
+          <div class="flex items-center gap-1.5 pt-0.5">
+            <span class="text-blue-200/70 text-[11px]">Prioritas:</span>
+            <span style="background-color: ${catBadgeColor}; color: #ffffff;" class="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs whitespace-nowrap">
+              <span>${catIcon}</span><span>${sfCat}</span>
+            </span>
+          </div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">SF Fokus:</span> <span class="font-semibold text-white">${promotor}</span></div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">Populasi:</span> <span class="font-mono font-semibold text-white">${population.toLocaleString('id-ID')} jiwa</span></div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">Total POI & BTS:</span> <span class="text-white font-mono font-medium">${totalPoi} POI &bull; ${totalBts} BTS</span></div>
+          <div class="pt-1.5 border-t border-blue-900/60 text-[11px] space-y-1">
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS XLCo:</span> <span class="font-mono font-semibold text-blue-400">${msXLCo}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS SF:</span> <span class="font-mono font-bold text-emerald-400">${msSF}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS IM3:</span> <span class="font-mono font-semibold text-amber-400">${msIM3}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS 3TRI:</span> <span class="font-mono font-semibold text-indigo-300">${ms3TRI}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS TSEL:</span> <span class="font-mono font-semibold text-rose-400">${msTSEL}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS XLS:</span> <span class="font-mono font-semibold text-blue-300">${msXLS}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">MS IOH:</span> <span class="font-mono font-semibold text-amber-300">${msIOH}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">P10 Speed SF:</span> <span class="font-mono font-semibold text-emerald-300">${p10SF}</span></div>
+            <div class="flex items-center justify-between"><span class="text-blue-200/70">P10 Speed XLCo:</span> <span class="font-mono font-semibold text-blue-300">${p10XLCo}</span></div>
+          </div>
+        </div>
+        <div class="pt-2 flex items-center gap-2 border-t border-blue-900/60">
+          <a href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs no-underline cursor-pointer">
+            <span>🧭</span><span>Go to Location</span>
+          </a>
+          ${isAdmin ? `
+            <button id="btn-edit-${gridId}" type="button" class="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-medium py-1.5 px-2.5 rounded-lg text-xs transition cursor-pointer shrink-0" title="Edit Grid Data">
+              <span>⚙️</span> Edit
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="space-y-2 text-slate-900 font-sans min-w-[250px] max-w-[300px] p-1">
+      <div class="text-xs text-slate-600 space-y-1.5 leading-snug">
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Grid ID:</span> <span class="font-mono text-slate-900 font-bold">${gridId}</span></div>
+        <div class="font-extrabold text-blue-900 uppercase tracking-wide text-xs">${city.toUpperCase()}</div>
+        <div class="flex items-center gap-1.5 pt-0.5">
+          <span class="text-slate-500 text-[11px] font-medium">Prioritas:</span>
+          <span style="background-color: ${catBadgeColor}; color: #ffffff;" class="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs whitespace-nowrap">
+            <span>${catIcon}</span><span>${sfCat}</span>
+          </span>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">SF Fokus:</span> <span class="font-semibold text-slate-900">${promotor}</span></div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Populasi:</span> <span class="font-mono font-semibold text-slate-900">${population.toLocaleString('id-ID')} jiwa</span></div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Total POI & BTS:</span> <span class="text-slate-800 font-mono font-semibold">${totalPoi} POI &bull; ${totalBts} BTS</span></div>
+        <div class="pt-1.5 border-t border-slate-200 text-[11px] space-y-1">
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS XLCo:</span> <span class="font-mono font-bold text-blue-700">${msXLCo}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS SF:</span> <span class="font-mono font-bold text-emerald-700">${msSF}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS IM3:</span> <span class="font-mono font-bold text-amber-700">${msIM3}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS 3TRI:</span> <span class="font-mono font-bold text-indigo-700">${ms3TRI}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS TSEL:</span> <span class="font-mono font-bold text-rose-700">${msTSEL}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS XLS:</span> <span class="font-mono font-bold text-blue-800">${msXLS}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">MS IOH:</span> <span class="font-mono font-bold text-amber-800">${msIOH}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">P10 Speed SF:</span> <span class="font-mono font-semibold text-emerald-800">${p10SF}</span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">P10 Speed XLCo:</span> <span class="font-mono font-semibold text-blue-800">${p10XLCo}</span></div>
+        </div>
+      </div>
+      <div class="pt-2 flex items-center gap-2 border-t border-slate-200">
+        <a href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs no-underline cursor-pointer">
+          <span>🧭</span><span>Go to Location</span>
+        </a>
+        ${isAdmin ? `
+          <button id="btn-edit-${gridId}" type="button" class="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-medium py-1.5 px-2.5 rounded-lg text-xs transition cursor-pointer shrink-0" title="Edit Grid Data">
+            <span>⚙️</span> Edit
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// Lazy popup HTML builder for BTS
+function buildBtsPopupHtml(bts: BTSItem, isDarkMode: boolean, isAdmin: boolean): string {
+  const lat = bts.latitude ?? bts.lat ?? -7.054;
+  const lng = bts.ongitude ?? bts.longitude ?? bts.lng ?? 112.742;
+  const sitename = bts.sitename || bts.name || `Tower ${bts.id}`;
+  const revFlag = bts['Revenue Flag'] || bts.rev || 'Rev >40 Mn';
+  const siteType = bts.site_type || bts.type || 'Macro';
+  const siteFunc = bts['Site Function'] || bts.func || 'Residential';
+  const aging = bts['Aging (Month)'] ?? bts.aging_month ?? 24;
+  const metaId = bts.GRID_META_ID || bts.grid || `GM-${bts.id}`;
+
+  let markerColor = '#64748b';
+  const found = BTS_REV_CONFIG.find((c) => c.key === revFlag);
+  if (found) markerColor = found.color;
+
+  if (isDarkMode) {
+    return `
+      <div class="p-3 space-y-2 text-slate-100 font-sans min-w-[260px] max-w-[310px]">
+        <div class="flex items-center justify-between border-b border-blue-900/60 pb-1.5 gap-2">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="p-1 rounded-md bg-blue-500/20 text-cyan-300 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="2" x2="12" y2="6" /><circle cx="12" cy="2.5" r="1.2" fill="currentColor" />
+                <line x1="8" y1="7" x2="16" y2="7" /><line x1="6.5" y1="12" x2="17.5" y2="12" />
+                <path d="M9.5 7L4.5 22" /><path d="M14.5 7L19.5 22" />
+                <line x1="8.5" y1="9.5" x2="15.5" y2="12" /><line x1="15.5" y1="9.5" x2="8.5" y2="12" />
+                <path d="M4.5 4A4 4 0 0 0 2 8" /><path d="M19.5 4A4 4 0 0 1 22 8" />
+              </svg>
+            </span>
+            <span class="font-bold text-xs text-white truncate" title="${sitename}">${sitename}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded font-bold text-white shadow-xs shrink-0" style="background-color: ${markerColor}">${revFlag}</span>
+        </div>
+        <div class="text-[11px] text-slate-300 space-y-1">
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">ID Tower:</span> <strong class="text-cyan-300 font-mono font-bold">${bts.id}</strong></div>
+          <div class="flex items-start justify-between gap-2"><span class="text-blue-200/70 shrink-0">Wilayah:</span> <strong class="text-white text-right font-medium">${bts.City || bts.city || ''}, ${bts.Kecamatan || bts.kec || ''}</strong></div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">Tipe & Fungsi:</span> <strong class="text-slate-100 font-medium">${siteType} &bull; ${siteFunc}</strong></div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">Aging:</span> <strong class="text-amber-300 font-mono font-bold">${aging} Bulan</strong></div>
+          <div class="flex items-center justify-between"><span class="text-blue-200/70">GRID_META_ID:</span> <span class="font-mono text-amber-300 font-semibold">${metaId}</span></div>
+        </div>
+        <div class="pt-2 flex flex-col gap-1.5 border-t border-blue-900/60">
+          <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Go to Location (Google Maps)</span>
+          </a>
+          ${isAdmin ? `
+            <button id="btn-edit-bts-${bts.id}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs py-1.5 rounded-lg transition cursor-pointer font-medium flex items-center justify-center gap-1">
+              <span>⚙️</span> Edit Data BTS (16 Fields Master)
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="p-3 space-y-2 text-slate-900 font-sans min-w-[260px] max-w-[310px]">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="p-1 rounded-md bg-blue-50 text-blue-700 shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="2" x2="12" y2="6" /><circle cx="12" cy="2.5" r="1.2" fill="currentColor" />
+              <line x1="8" y1="7" x2="16" y2="7" /><line x1="6.5" y1="12" x2="17.5" y2="12" />
+              <path d="M9.5 7L4.5 22" /><path d="M14.5 7L19.5 22" />
+              <line x1="8.5" y1="9.5" x2="15.5" y2="12" /><line x1="15.5" y1="9.5" x2="8.5" y2="12" />
+              <path d="M4.5 4A4 4 0 0 0 2 8" /><path d="M19.5 4A4 4 0 0 1 22 8" />
+            </svg>
+          </span>
+          <span class="font-bold text-xs text-slate-900 truncate" title="${sitename}">${sitename}</span>
+        </div>
+        <span class="text-[10px] px-2 py-0.5 rounded font-bold text-white shadow-xs shrink-0" style="background-color: ${markerColor}">${revFlag}</span>
+      </div>
+      <div class="text-[11px] text-slate-600 space-y-1">
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">ID Tower:</span> <strong class="text-blue-700 font-mono font-bold">${bts.id}</strong></div>
+        <div class="flex items-start justify-between gap-2"><span class="text-slate-500 font-medium shrink-0">Wilayah:</span> <strong class="text-slate-800 text-right font-semibold">${bts.City || bts.city || ''}, ${bts.Kecamatan || bts.kec || ''}</strong></div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Tipe & Fungsi:</span> <strong class="text-slate-800 font-medium">${siteType} &bull; ${siteFunc}</strong></div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Aging:</span> <strong class="text-amber-800 font-mono font-bold">${aging} Bulan</strong></div>
+        <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">GRID_META_ID:</span> <span class="font-mono text-indigo-700 font-bold">${metaId}</span></div>
+      </div>
+      <div class="pt-2 flex flex-col gap-1.5 border-t border-slate-200">
+        <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Go to Location (Google Maps)</span>
+        </a>
+        ${isAdmin ? `
+          <button id="btn-edit-bts-${bts.id}" class="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-xs py-1.5 rounded-lg transition cursor-pointer font-medium flex items-center justify-center gap-1">
+            <span>⚙️</span> Edit Data BTS (16 Fields Master)
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// Lazy popup HTML builder for POI
+function buildPoiPopupHtml(poi: POIItem, isDarkMode: boolean): string {
+  const icon = getPoiCategoryIcon(poi.type);
+  if (isDarkMode) {
+    return `
+      <div class="p-3 text-slate-100 font-sans text-xs min-w-[210px] max-w-[270px] space-y-2">
+        <div>
+          <div class="font-bold text-cyan-300 flex items-center gap-1.5 text-xs">
+            <span class="text-sm shrink-0">${icon}</span>
+            <span class="truncate" title="${poi.name}">${poi.name}</span>
+          </div>
+          <div class="text-[11px] text-blue-200/80 font-medium mt-0.5">${poi.type}</div>
+          <div class="text-[10px] text-slate-400 mt-1 border-t border-blue-900/50 pt-1">${poi.city}, ${poi.kec}</div>
+        </div>
+        <div class="pt-1.5 border-t border-blue-900/60">
+          <a href="https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}" target="_blank" rel="noopener noreferrer" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Go to Location (Google Maps)</span>
+          </a>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="p-3 text-slate-900 font-sans text-xs min-w-[210px] max-w-[270px] space-y-2">
+      <div>
+        <div class="font-bold text-blue-700 flex items-center gap-1.5 text-xs">
+          <span class="text-sm shrink-0">${icon}</span>
+          <span class="truncate" title="${poi.name}">${poi.name}</span>
+        </div>
+        <div class="text-[11px] text-slate-700 font-medium mt-0.5">${poi.type}</div>
+        <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-200 pt-1">${poi.city}, ${poi.kec}</div>
+      </div>
+      <div class="pt-1.5 border-t border-slate-200">
+        <a href="https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}" target="_blank" rel="noopener noreferrer" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Go to Location (Google Maps)</span>
+        </a>
+      </div>
+    </div>
+  `;
 }
 
 // Gradient palettes for each heatmap mode
@@ -140,7 +468,10 @@ export const MapView: React.FC<MapViewProps> = ({
   onEditGrid,
   onEditBTS,
   focusedLocation,
-  isDarkMode = true
+  isDarkMode = true,
+  selectedRegion,
+  selectedCity,
+  loading = false
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -148,6 +479,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const btsLayersRef = useRef<L.LayerGroup | null>(null);
   const poiLayersRef = useRef<L.LayerGroup | null>(null);
   const heatLayerRef = useRef<any>(null);
+  const canvasRendererRef = useRef<L.Canvas | null>(null);
 
   // Heatmap Overlay State
   const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
@@ -177,16 +509,6 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  // BTS Revenue Categories Config & State
-  const BTS_REV_CONFIG = [
-    { key: 'Rev >40 Mn', label: 'Rev >40 Mn', color: '#3b82f6' },
-    { key: 'Rev 30-40 Mn', label: 'Rev 30-40 Mn', color: '#10b981' },
-    { key: 'Rev 20-30 Mn', label: 'Rev 20-30 Mn', color: '#f59e0b' },
-    { key: 'Rev <20 Mn', label: 'Rev <20 Mn', color: '#ef4444' },
-    { key: 'Rev 0', label: 'Rev 0', color: '#78350f' },
-    { key: 'Unknown', label: 'Unknown', color: '#64748b' }
-  ];
-
   const [selectedBtsRevs, setSelectedBtsRevs] = useState<string[]>([
     'Rev >40 Mn',
     'Rev 30-40 Mn',
@@ -205,43 +527,22 @@ export const MapView: React.FC<MapViewProps> = ({
   // Extract all unique POI types from the data
   const allPoiTypes = Array.from(new Set(pois.map((p) => p.type))).filter(Boolean);
 
-  const getPoiCategoryIcon = (type: string) => {
-    const t = (type || '').toLowerCase().trim();
-    if (t.includes('tourist') || t.includes('wisata') || t.includes('attraction')) return '🏞️';
-    if (t.includes('park') || t.includes('taman')) return '🌳';
-    if (t.includes('department') || t.includes('mall') || t.includes('plaza')) return '🏬';
-    if (t.includes('amusement') || t.includes('hiburan') || t.includes('wahana')) return '🎡';
-    if (t.includes('gas') || t.includes('spbu') || t.includes('bensin') || t.includes('fuel')) return '⛽';
-    if (t.includes('bus') || t.includes('halte') || t.includes('terminal')) return '🚌';
-    if (t.includes('community') || t.includes('balai') || t.includes('center') || t.includes('komunitas')) return '🏬';
-    if (t.includes('govern') || t.includes('pemerintah') || t.includes('kantor') || t.includes('dinas')) return '🏛️';
-    if (t.includes('hospital') || t.includes('rumah sakit') || t.includes('klinik') || t.includes('puskesmas') || t.includes('medik')) return '🏥';
-    if (t.includes('supermarket') || t.includes('swalayan') || t.includes('hypermart') || t.includes('minimarket') || t.includes('indomaret') || t.includes('alfamart')) return '🛒';
-    if (t.includes('market') || t.includes('pasar') || t.includes('toko') || t.includes('bunga')) return '🏪';
-    if (t.includes('hotel') || t.includes('penginapan') || t.includes('villa') || t.includes('resort') || t.includes('inn')) return '🏨';
-    if (t.includes('restaurant') || t.includes('resto') || t.includes('cafe') || t.includes('kuliner') || t.includes('warung') || t.includes('makan') || t.includes('food')) return '🍽️';
-    if (t.includes('school') || t.includes('kampus') || t.includes('sekolah') || t.includes('universitas') || t.includes('sd') || t.includes('smp') || t.includes('sma')) return '🏫';
-    if (t.includes('worship') || t.includes('mosque') || t.includes('masjid') || t.includes('musholla') || t.includes('church') || t.includes('gereja') || t.includes('temple') || t.includes('pura')) return '🕌';
-    if (t.includes('bank') || t.includes('atm')) return '🏦';
-    if (t.includes('pharmacy') || t.includes('apotek') || t.includes('obat')) return '💊';
-    if (t.includes('transport') || t.includes('stasiun') || t.includes('station') || t.includes('kereta') || t.includes('train')) return '🚉';
-    if (t.includes('airport') || t.includes('bandara')) return '✈️';
-    if (t.includes('harbor') || t.includes('port') || t.includes('pelabuhan')) return '⚓';
-    if (t.includes('police') || t.includes('polisi') || t.includes('pos')) return '👮';
-    if (t.includes('outlet') || t.includes('store') || t.includes('counter') || t.includes('cell')) return '📱';
-    return '📍';
-  };
-
-  // Initialize Map
+  // Initialize Map with High-Performance HTML5 Canvas Rendering
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+    // Shared hardware-accelerated canvas renderer for all vector polygons and markers
+    const canvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
+    canvasRendererRef.current = canvasRenderer;
 
     // Center default on Bangkalan / Madura (-7.05, 112.9)
     const map = L.map(mapContainerRef.current, {
       center: [-7.05, 112.95],
       zoom: 11,
       zoomControl: false,
-      attributionControl: false
+      attributionControl: false,
+      preferCanvas: true,
+      renderer: canvasRenderer
     });
 
     const tile = L.tileLayer(tileUrls[mapTheme], {
@@ -250,7 +551,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
     tileLayerRef.current = tile;
 
-    // Add layers
+    // Add layer groups
     gridLayersRef.current = L.layerGroup().addTo(map);
     btsLayersRef.current = L.layerGroup().addTo(map);
     poiLayersRef.current = L.layerGroup().addTo(map);
@@ -263,6 +564,31 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, []);
 
+  // Instant Region & City flyTo (Immediate visual responsiveness when switching regions in sidebar)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    // Priority 1: Specific city target
+    if (selectedCity && selectedCity !== 'ALL') {
+      const cityKey = selectedCity.toUpperCase().trim();
+      const cityMatch = CITY_CENTERS[cityKey] || Object.entries(CITY_CENTERS).find(([k]) => cityKey.includes(k) || k.includes(cityKey))?.[1];
+      if (cityMatch) {
+        mapInstanceRef.current.flyTo(cityMatch.center, cityMatch.zoom, { duration: 0.65 });
+        return;
+      }
+    }
+
+    // Priority 2: Region target
+    if (selectedRegion && selectedRegion !== 'ALL') {
+      const regKey = selectedRegion.toUpperCase().trim();
+      const regMatch = REGION_CENTERS[regKey] || Object.entries(REGION_CENTERS).find(([k]) => regKey.includes(k) || k.includes(regKey))?.[1];
+      if (regMatch) {
+        mapInstanceRef.current.flyTo(regMatch.center, regMatch.zoom, { duration: 0.65 });
+        return;
+      }
+    }
+  }, [selectedRegion, selectedCity]);
+
   // Update base tile when mapTheme changes
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
@@ -273,7 +599,7 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (focusedLocation && mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([focusedLocation.lat, focusedLocation.lng], 15, {
-        duration: 1.5
+        duration: 1.2
       });
     }
   }, [focusedLocation]);
@@ -334,60 +660,27 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [grids, showHeatmap, heatmapMetric, heatmapRadius, heatmapBlur, heatmapMinOpacity]);
 
-  // Render Grids
+  // Render Grids (High-performance detached batching + lazy popups)
   useEffect(() => {
-    if (!gridLayersRef.current || !mapInstanceRef.current) return;
-    gridLayersRef.current.clearLayers();
+    if (!mapInstanceRef.current) return;
 
-    if (grids.length === 0) return;
+    if (grids.length === 0) {
+      if (gridLayersRef.current && mapInstanceRef.current.hasLayer(gridLayersRef.current)) {
+        mapInstanceRef.current.removeLayer(gridLayersRef.current);
+      }
+      return;
+    }
 
-    const boundsGroup = L.featureGroup();
+    const newGridGroup = L.layerGroup();
+    const isAdmin = user?.role === 'ADMIN';
 
     grids.forEach((grid) => {
-      // 23 Headers matching "tabel grid detail"
       const gridId = String(grid.GRID_ID || grid.id || '');
-      const region = grid.REGION || grid.Region || grid.region || 'EAST JAVA';
-      const province = grid.PROVINCE || grid.Province || grid.province || 'JAWA TIMUR (4672)';
-      const city = grid.CITY || grid.City || grid.city || 'KAB. BANGKALAN';
-      const kecamatan = grid.KECAMATAN || grid.Kecamatan || grid.kecamatan || 'Bangkalan';
       const sfCat = grid['SF Grid Category'] || grid.SF_Grid_Category || grid.cat || 'Avoid Cannibalism';
       const catTheme = getCategoryTheme(sfCat);
-      const promotor = grid['Mapping Promotor'] || grid.prom || 'MULTIBRAND';
-
-      const centerLat = typeof grid['Center Lat'] === 'number'
-        ? grid['Center Lat']
-        : (grid.latitude !== undefined ? grid.latitude : (grid.center?.[0] ?? -7.05));
-      const centerLng = typeof grid['Center Long'] === 'number'
-        ? grid['Center Long']
-        : (grid.longitude !== undefined ? grid.longitude : (grid.center?.[1] ?? 112.9));
 
       const wkt = String(grid['Geometry WKT'] || grid.Geometry_WKT || '');
-      const population = typeof grid.POPULATION === 'number' ? grid.POPULATION : (grid.pop || 5000);
 
-      const msXLCo = formatMSAbsolute(grid['MS_XLCo.'] ?? grid.xlco ?? '0');
-      const msSF = formatMSAbsolute(grid.MS_SF ?? grid.sf ?? '0');
-      const msIM3 = formatMSAbsolute(grid.MS_IM3 ?? grid.im3 ?? '0');
-      const ms3TRI = formatMSAbsolute(grid.MS_3TRI ?? grid.tri ?? '0');
-      const msTSEL = formatMSAbsolute(grid.MS_TSEL ?? grid.tsel ?? '0');
-      const msXLS = formatMSAbsolute(grid.MS_XLS ?? grid.xl ?? grid.xls ?? '0');
-      const msIOH = formatMSAbsolute(grid.MS_IOH ?? grid.ioh ?? '0');
-
-      const p10XLCo = String(grid.P10_DL_Speed_XLCo || '16.4 Mbps');
-      const p10SF = String(grid.P10_DL_Speed_SF || (sfCat === '1st Priority Acquisition' ? '22.8 Mbps' : '14.5 Mbps'));
-
-      const totalPoi = typeof grid.TOTAL_POI === 'number' ? grid.TOTAL_POI : (grid.poi || 0);
-      const totalBts = typeof grid.TOTAL_BTS === 'number' ? grid.TOTAL_BTS : (grid.bts || 0);
-      const totalBtsRes = typeof grid.TOTAL_BTS_RESIDENTIAL === 'number'
-        ? grid.TOTAL_BTS_RESIDENTIAL
-        : (parseInt(String(grid.TOTAL_BTS_RESIDENTIAL || '')) || Math.max(0, Math.floor(totalBts * 0.75)));
-
-      const sitename = grid.sitename || `${kecamatan} Grid ${gridId.slice(-4)}`;
-
-      // Synchronized Colors: using unified Category Theme
-      // 1. 1st Priority Acquisition > Hijau (#10b981)
-      // 2. 2nd Priority Acquisition > Orange (#f97316)
-      // 3. 3rd Priority > Merah (#ef4444)
-      // 4. Avoid Cannibalism > Abu (#64748b)
       const isDimmed = showHeatmap && dimGridPolygons;
       const fillColor = catTheme.hex;
       const strokeColor = catTheme.strokeHex;
@@ -397,35 +690,38 @@ export const MapView: React.FC<MapViewProps> = ({
       const strokeOpacity = isDimmed ? 0.35 : 0.92;
       const strokeWidth = isDimmed ? 0.75 : 1.25;
 
-      // Parse WKT polygon or GeoJSON geometry if available
-      let wktPoints: [number, number][] | null = null;
-      if (grid.geometry) {
-        let geomObj: any = grid.geometry;
-        if (typeof geomObj === 'string') {
-          try {
-            geomObj = JSON.parse(geomObj);
-          } catch {}
+      // Parse WKT polygon or GeoJSON geometry if available (with in-memory coordinate cache)
+      let wktPoints: [number, number][] | null = (grid as any)._cachedPts || null;
+      if (!wktPoints) {
+        if (grid.geometry) {
+          let geomObj: any = grid.geometry;
+          if (typeof geomObj === 'string') {
+            try {
+              geomObj = JSON.parse(geomObj);
+            } catch {}
+          }
+          if (geomObj && geomObj.type === 'Polygon' && Array.isArray(geomObj.coordinates?.[0])) {
+            const coords = geomObj.coordinates[0];
+            const pts = coords
+              .map((c: any) => [c[1], c[0]] as [number, number])
+              .filter(([lat, lng]: [number, number]) => !isNaN(lat) && !isNaN(lng));
+            if (pts.length >= 3) wktPoints = pts;
+          }
         }
-        if (geomObj && geomObj.type === 'Polygon' && Array.isArray(geomObj.coordinates?.[0])) {
-          const coords = geomObj.coordinates[0];
-          const pts = coords
-            .map((c: any) => [c[1], c[0]] as [number, number])
-            .filter(([lat, lng]: [number, number]) => !isNaN(lat) && !isNaN(lng));
-          if (pts.length >= 3) wktPoints = pts;
-        }
-      }
 
-      if (!wktPoints && wkt && typeof wkt === 'string') {
-        const match = wkt.match(/POLYGON\s*\(\(\s*(.*?)\s*\)\)/i);
-        if (match && match[1]) {
-          const parsed = match[1].split(',').map((pair) => {
-            const parts = pair.trim().split(/\s+/);
-            const lng = parseFloat(parts[0]);
-            const lat = parseFloat(parts[1]);
-            return [lat, lng] as [number, number];
-          }).filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
-          if (parsed.length >= 3) wktPoints = parsed;
+        if (!wktPoints && wkt && typeof wkt === 'string') {
+          const match = wkt.match(/POLYGON\s*\(\(\s*(.*?)\s*\)\)/i);
+          if (match && match[1]) {
+            const parsed = match[1].split(',').map((pair) => {
+              const parts = pair.trim().split(/\s+/);
+              const lng = parseFloat(parts[0]);
+              const lat = parseFloat(parts[1]);
+              return [lat, lng] as [number, number];
+            }).filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
+            if (parsed.length >= 3) wktPoints = parsed;
+          }
         }
+        if (wktPoints) (grid as any)._cachedPts = wktPoints;
       }
 
       const rect: L.Polygon = wktPoints
@@ -465,181 +761,8 @@ export const MapView: React.FC<MapViewProps> = ({
         });
       });
 
-      // Computed traffic info for popup
-      const trafficInfo = getGridTrafficIntensity(grid);
-
-      // Simplified popup matching Gambar 1 + SF Fokus & Populasi
-      const catBadgeColor = catTheme.hex;
-      const catIcon = sfCat === '1st Priority Acquisition' ? '🎯'
-        : sfCat === '2nd Priority Acquisition' ? '⚡'
-        : sfCat === '3rd Priority' ? '⚠️'
-        : '🛡️';
-
-      const popupHtml = isDarkMode ? `
-        <div class="space-y-2 text-slate-100 font-sans min-w-[250px] max-w-[300px] p-1">
-          <div class="text-xs text-slate-300 space-y-1.5 leading-snug">
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">Grid ID:</span> <span class="font-mono text-white font-bold">${gridId}</span></div>
-            <div class="font-extrabold text-blue-300 uppercase tracking-wide text-xs">${city.toUpperCase()}</div>
-            <div class="flex items-center gap-1.5 pt-0.5">
-              <span class="text-blue-200/70 text-[11px]">Prioritas:</span>
-              <span
-                style="background-color: ${catBadgeColor}; color: #ffffff;"
-                class="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs whitespace-nowrap"
-              >
-                <span>${catIcon}</span>
-                <span>${sfCat}</span>
-              </span>
-            </div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">SF Fokus:</span> <span class="font-semibold text-white">${promotor}</span></div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">Populasi:</span> <span class="font-mono font-semibold text-white">${population.toLocaleString('id-ID')} jiwa</span></div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">Total POI & BTS:</span> <span class="text-white font-mono font-medium">${totalPoi} POI &bull; ${totalBts} BTS</span></div>
-
-            <div class="pt-1.5 border-t border-blue-900/60 text-[11px] space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS XLCo:</span>
-                <span class="font-mono font-semibold text-blue-400">${msXLCo}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS SF:</span>
-                <span class="font-mono font-bold text-emerald-400">${msSF}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS IM3:</span>
-                <span class="font-mono font-semibold text-amber-400">${msIM3}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS 3TRI:</span>
-                <span class="font-mono font-semibold text-indigo-300">${ms3TRI}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS TSEL:</span>
-                <span class="font-mono font-semibold text-rose-400">${msTSEL}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS XLS:</span>
-                <span class="font-mono font-semibold text-blue-300">${msXLS}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">MS IOH:</span>
-                <span class="font-mono font-semibold text-amber-300">${msIOH}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">P10 Speed SF:</span>
-                <span class="font-mono font-semibold text-emerald-300">${p10SF}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-blue-200/70">P10 Speed XLCo:</span>
-                <span class="font-mono font-semibold text-blue-300">${p10XLCo}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-2 flex items-center gap-2 border-t border-blue-900/60">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs no-underline cursor-pointer"
-            >
-              <span>🧭</span>
-              <span>Go to Location</span>
-            </a>
-            ${user?.role === 'ADMIN' ? `
-              <button
-                id="btn-edit-${gridId}"
-                type="button"
-                class="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-medium py-1.5 px-2.5 rounded-lg text-xs transition cursor-pointer shrink-0"
-                title="Edit Grid Data"
-              >
-                <span>⚙️</span> Edit
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      ` : `
-        <div class="space-y-2 text-slate-900 font-sans min-w-[250px] max-w-[300px] p-1">
-          <div class="text-xs text-slate-600 space-y-1.5 leading-snug">
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Grid ID:</span> <span class="font-mono text-slate-900 font-bold">${gridId}</span></div>
-            <div class="font-extrabold text-blue-900 uppercase tracking-wide text-xs">${city.toUpperCase()}</div>
-            <div class="flex items-center gap-1.5 pt-0.5">
-              <span class="text-slate-500 text-[11px] font-medium">Prioritas:</span>
-              <span
-                style="background-color: ${catBadgeColor}; color: #ffffff;"
-                class="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs whitespace-nowrap"
-              >
-                <span>${catIcon}</span>
-                <span>${sfCat}</span>
-              </span>
-            </div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">SF Fokus:</span> <span class="font-semibold text-slate-900">${promotor}</span></div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Populasi:</span> <span class="font-mono font-semibold text-slate-900">${population.toLocaleString('id-ID')} jiwa</span></div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Total POI & BTS:</span> <span class="text-slate-800 font-mono font-semibold">${totalPoi} POI &bull; ${totalBts} BTS</span></div>
-
-            <div class="pt-1.5 border-t border-slate-200 text-[11px] space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS XLCo:</span>
-                <span class="font-mono font-bold text-blue-700">${msXLCo}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS SF:</span>
-                <span class="font-mono font-bold text-emerald-700">${msSF}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS IM3:</span>
-                <span class="font-mono font-bold text-amber-700">${msIM3}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS 3TRI:</span>
-                <span class="font-mono font-bold text-indigo-700">${ms3TRI}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS TSEL:</span>
-                <span class="font-mono font-bold text-rose-700">${msTSEL}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS XLS:</span>
-                <span class="font-mono font-bold text-blue-800">${msXLS}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">MS IOH:</span>
-                <span class="font-mono font-bold text-amber-800">${msIOH}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">P10 Speed SF:</span>
-                <span class="font-mono font-semibold text-emerald-800">${p10SF}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">P10 Speed XLCo:</span>
-                <span class="font-mono font-semibold text-blue-800">${p10XLCo}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-2 flex items-center gap-2 border-t border-slate-200">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-xs no-underline cursor-pointer"
-            >
-              <span>🧭</span>
-              <span>Go to Location</span>
-            </a>
-            ${user?.role === 'ADMIN' ? `
-              <button
-                id="btn-edit-${gridId}"
-                type="button"
-                class="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-medium py-1.5 px-2.5 rounded-lg text-xs transition cursor-pointer shrink-0"
-                title="Edit Grid Data"
-              >
-                <span>⚙️</span> Edit
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      `;
-
-      rect.bindPopup(popupHtml, {
+      // Lazy popup builder (Only evaluates HTML string when clicked)
+      rect.bindPopup(() => buildGridPopupHtml(grid, isDarkMode, isAdmin), {
         className: isDarkMode ? 'dark-leaflet-popup' : 'light-leaflet-popup',
         maxWidth: 320,
         minWidth: 250
@@ -657,150 +780,98 @@ export const MapView: React.FC<MapViewProps> = ({
         if (onSelectGrid) onSelectGrid(grid);
       });
 
-      gridLayersRef.current?.addLayer(rect);
-      boundsGroup.addLayer(rect);
+      newGridGroup.addLayer(rect);
     });
 
-    // Auto fit bounds if filtered by region, city, or category
-    if (grids.length > 0 && grids.length < 25000) {
-      const b = boundsGroup.getBounds();
-      if (b.isValid()) {
-        mapInstanceRef.current.fitBounds(b, { padding: [25, 25], maxZoom: 13 });
+    // Atomic replacement on the map (instant, no DOM freeze)
+    if (gridLayersRef.current && mapInstanceRef.current.hasLayer(gridLayersRef.current)) {
+      mapInstanceRef.current.removeLayer(gridLayersRef.current);
+    }
+    newGridGroup.addTo(mapInstanceRef.current);
+    gridLayersRef.current = newGridGroup;
+
+    // Fast bounds calculation ONLY when nationwide view (no region or city selected)
+    if ((!selectedRegion || selectedRegion === 'ALL') && (!selectedCity || selectedCity === 'ALL') && grids.length > 0) {
+      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      const sampleCount = Math.min(grids.length, 500);
+      for (let i = 0; i < sampleCount; i++) {
+        const lat = grids[i].latitude ?? grids[i].center?.[0];
+        const lng = grids[i].longitude ?? grids[i].center?.[1];
+        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+          if (lng < minLng) minLng = lng;
+          if (lng > maxLng) maxLng = lng;
+        }
+      }
+      if (minLat < maxLat) {
+        mapInstanceRef.current.fitBounds([[minLat, minLng], [maxLat, maxLng]], { padding: [25, 25], maxZoom: 13 });
       }
     }
   }, [grids, showHeatmap, dimGridPolygons, isDarkMode]);
 
-  // Render BTS
+  // Render BTS (Ultra-fast canvas circle markers when dense, elegant pins when focused + lazy popups)
   useEffect(() => {
-    if (!btsLayersRef.current) return;
-    btsLayersRef.current.clearLayers();
+    if (!mapInstanceRef.current) return;
 
-    if (selectedBtsRevs.length === 0) return;
+    if (selectedBtsRevs.length === 0 || btsList.length === 0) {
+      if (btsLayersRef.current && mapInstanceRef.current.hasLayer(btsLayersRef.current)) {
+        mapInstanceRef.current.removeLayer(btsLayersRef.current);
+      }
+      return;
+    }
 
     const visibleBts = btsList.filter((bts) => {
       const flag = bts['Revenue Flag'] || bts.rev || 'Unknown';
       return selectedBtsRevs.includes(flag);
     });
 
-    const renderLimit = 2500;
+    const renderLimit = 3000;
     const btsToRender = visibleBts.length > renderLimit ? visibleBts.slice(0, renderLimit) : visibleBts;
+    const newBtsGroup = L.layerGroup();
+    const isAdmin = user?.role === 'ADMIN';
+    const isDense = btsToRender.length > 200;
 
     btsToRender.forEach((bts) => {
       const lat = bts.latitude ?? bts.lat ?? -7.054;
       const lng = bts.ongitude ?? bts.longitude ?? bts.lng ?? 112.742;
       const sitename = bts.sitename || bts.name || `Tower ${bts.id}`;
       const revFlag = bts['Revenue Flag'] || bts.rev || 'Rev >40 Mn';
-      const siteType = bts.site_type || bts.type || 'Macro';
-      const siteFunc = bts['Site Function'] || bts.func || 'Residential';
-      const aging = bts['Aging (Month)'] ?? bts.aging_month ?? 24;
-      const metaId = bts.GRID_META_ID || bts.grid || `GM-${bts.id}`;
-      const bsp = bts['BSP Data'] || bts.bsp_data || 'Smartfren Fiber Core';
-      const rawRev = bts['Rev.2026'] ?? bts.Rev_2026 ?? 45000000;
-      const revFormatted = `Rp ${(Number(rawRev) / 1000000).toFixed(1)} Mn`;
 
       let markerColor = '#64748b';
       const found = BTS_REV_CONFIG.find((c) => c.key === revFlag);
       if (found) markerColor = found.color;
 
-      // Custom Telecom Cell Tower Marker Pin using Leaflet divIcon (Static, lightweight & precise)
-      const towerDivIcon = L.divIcon({
-        html: generateTowerMarkerHtml(markerColor, sitename),
-        className: 'custom-bts-tower-icon',
-        iconSize: [28, 34],
-        iconAnchor: [14, 34],
-        popupAnchor: [0, -32]
-      });
+      let btsMarker: L.Marker | L.CircleMarker;
 
-      const btsMarker = L.marker([lat, lng], {
-        icon: towerDivIcon,
-        title: sitename
-      });
+      if (!isDense) {
+        // Precise Telecom Tower Pin for focused city/area
+        const towerDivIcon = L.divIcon({
+          html: generateTowerMarkerHtml(markerColor, sitename),
+          className: 'custom-bts-tower-icon',
+          iconSize: [28, 34],
+          iconAnchor: [14, 34],
+          popupAnchor: [0, -32]
+        });
 
-      const popupHtml = isDarkMode ? `
-        <div class="p-3 space-y-2 text-slate-100 font-sans min-w-[260px] max-w-[310px]">
-          <div class="flex items-center justify-between border-b border-blue-900/60 pb-1.5 gap-2">
-            <div class="flex items-center gap-1.5 min-w-0">
-              <span class="p-1 rounded-md bg-blue-500/20 text-cyan-300 shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="2" x2="12" y2="6" /><circle cx="12" cy="2.5" r="1.2" fill="currentColor" />
-                  <line x1="8" y1="7" x2="16" y2="7" /><line x1="6.5" y1="12" x2="17.5" y2="12" />
-                  <path d="M9.5 7L4.5 22" /><path d="M14.5 7L19.5 22" />
-                  <line x1="8.5" y1="9.5" x2="15.5" y2="12" /><line x1="15.5" y1="9.5" x2="8.5" y2="12" />
-                  <path d="M4.5 4A4 4 0 0 0 2 8" /><path d="M19.5 4A4 4 0 0 1 22 8" />
-                </svg>
-              </span>
-              <span class="font-bold text-xs text-white truncate" title="${sitename}">${sitename}</span>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded font-bold text-white shadow-xs shrink-0" style="background-color: ${markerColor}">${revFlag}</span>
-          </div>
-          <div class="text-[11px] text-slate-300 space-y-1">
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">ID Tower:</span> <strong class="text-cyan-300 font-mono font-bold">${bts.id}</strong></div>
-            <div class="flex items-start justify-between gap-2"><span class="text-blue-200/70 shrink-0">Wilayah:</span> <strong class="text-white text-right font-medium">${bts.City || bts.city || ''}, ${bts.Kecamatan || bts.kec || ''}</strong></div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">Tipe & Fungsi:</span> <strong class="text-slate-100 font-medium">${siteType} &bull; ${siteFunc}</strong></div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">Aging:</span> <strong class="text-amber-300 font-mono font-bold">${aging} Bulan</strong></div>
-            <div class="flex items-center justify-between"><span class="text-blue-200/70">GRID_META_ID:</span> <span class="font-mono text-amber-300 font-semibold">${metaId}</span></div>
-          </div>
-          <div class="pt-2 flex flex-col gap-1.5 border-t border-blue-900/60">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>Go to Location (Google Maps)</span>
-            </a>
-            ${user?.role === 'ADMIN' ? `
-              <button id="btn-edit-bts-${bts.id}" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs py-1.5 rounded-lg transition cursor-pointer font-medium flex items-center justify-center gap-1">
-                <span>⚙️</span> Edit Data BTS (16 Fields Master)
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      ` : `
-        <div class="p-3 space-y-2 text-slate-900 font-sans min-w-[260px] max-w-[310px]">
-          <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
-            <div class="flex items-center gap-1.5 min-w-0">
-              <span class="p-1 rounded-md bg-blue-50 text-blue-700 shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="2" x2="12" y2="6" /><circle cx="12" cy="2.5" r="1.2" fill="currentColor" />
-                  <line x1="8" y1="7" x2="16" y2="7" /><line x1="6.5" y1="12" x2="17.5" y2="12" />
-                  <path d="M9.5 7L4.5 22" /><path d="M14.5 7L19.5 22" />
-                  <line x1="8.5" y1="9.5" x2="15.5" y2="12" /><line x1="15.5" y1="9.5" x2="8.5" y2="12" />
-                  <path d="M4.5 4A4 4 0 0 0 2 8" /><path d="M19.5 4A4 4 0 0 1 22 8" />
-                </svg>
-              </span>
-              <span class="font-bold text-xs text-slate-900 truncate" title="${sitename}">${sitename}</span>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded font-bold text-white shadow-xs shrink-0" style="background-color: ${markerColor}">${revFlag}</span>
-          </div>
-          <div class="text-[11px] text-slate-600 space-y-1">
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">ID Tower:</span> <strong class="text-blue-700 font-mono font-bold">${bts.id}</strong></div>
-            <div class="flex items-start justify-between gap-2"><span class="text-slate-500 font-medium shrink-0">Wilayah:</span> <strong class="text-slate-800 text-right font-semibold">${bts.City || bts.city || ''}, ${bts.Kecamatan || bts.kec || ''}</strong></div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Tipe & Fungsi:</span> <strong class="text-slate-800 font-medium">${siteType} &bull; ${siteFunc}</strong></div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">Aging:</span> <strong class="text-amber-800 font-mono font-bold">${aging} Bulan</strong></div>
-            <div class="flex items-center justify-between"><span class="text-slate-500 font-medium">GRID_META_ID:</span> <span class="font-mono text-indigo-700 font-bold">${metaId}</span></div>
-          </div>
-          <div class="pt-2 flex flex-col gap-1.5 border-t border-slate-200">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>Go to Location (Google Maps)</span>
-            </a>
-            ${user?.role === 'ADMIN' ? `
-              <button id="btn-edit-bts-${bts.id}" class="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-xs py-1.5 rounded-lg transition cursor-pointer font-medium flex items-center justify-center gap-1">
-                <span>⚙️</span> Edit Data BTS (16 Fields Master)
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      `;
+        btsMarker = L.marker([lat, lng], {
+          icon: towerDivIcon,
+          title: sitename
+        });
+      } else {
+        // High-performance canvas-accelerated marker when rendering hundreds/thousands across entire region
+        btsMarker = L.circleMarker([lat, lng], {
+          radius: 5.5,
+          weight: 1.5,
+          color: '#ffffff',
+          fillColor: markerColor,
+          fillOpacity: 0.95,
+          renderer: canvasRendererRef.current || undefined
+        });
+      }
 
-      btsMarker.bindPopup(popupHtml, {
+      // Lazy popup builder (Only evaluates HTML string when clicked)
+      btsMarker.bindPopup(() => buildBtsPopupHtml(bts, isDarkMode, isAdmin), {
         className: isDarkMode ? 'dark-leaflet-popup' : 'light-leaflet-popup',
         minWidth: 260,
         maxWidth: 320
@@ -813,18 +884,29 @@ export const MapView: React.FC<MapViewProps> = ({
         }
       });
 
-      btsLayersRef.current?.addLayer(btsMarker);
+      newBtsGroup.addLayer(btsMarker);
     });
+
+    if (btsLayersRef.current && mapInstanceRef.current.hasLayer(btsLayersRef.current)) {
+      mapInstanceRef.current.removeLayer(btsLayersRef.current);
+    }
+    newBtsGroup.addTo(mapInstanceRef.current);
+    btsLayersRef.current = newBtsGroup;
   }, [btsList, selectedBtsRevs, isDarkMode]);
 
-  // Render POIs
+  // Render POIs (Canvas accelerated + lazy popups)
   useEffect(() => {
-    if (!poiLayersRef.current) return;
-    poiLayersRef.current.clearLayers();
+    if (!mapInstanceRef.current) return;
 
-    if (selectedPoiTypes.length === 0) return;
+    if (selectedPoiTypes.length === 0 || pois.length === 0) {
+      if (poiLayersRef.current && mapInstanceRef.current.hasLayer(poiLayersRef.current)) {
+        mapInstanceRef.current.removeLayer(poiLayersRef.current);
+      }
+      return;
+    }
 
     const visiblePois = pois.filter((poi) => selectedPoiTypes.includes(poi.type));
+    const newPoiGroup = L.layerGroup();
 
     visiblePois.forEach((poi) => {
       const poiMarker = L.circleMarker([poi.lat, poi.lng], {
@@ -832,62 +914,24 @@ export const MapView: React.FC<MapViewProps> = ({
         fillColor: '#06b6d4',
         color: '#ffffff',
         weight: 1,
-        fillOpacity: 0.85
+        fillOpacity: 0.85,
+        renderer: canvasRendererRef.current || undefined
       });
 
-      const poiPopupHtml = isDarkMode ? `
-        <div class="p-3 text-slate-100 font-sans text-xs min-w-[210px] max-w-[270px] space-y-2">
-          <div>
-            <div class="font-bold text-cyan-300 flex items-center gap-1.5 text-xs">
-              <span class="text-sm shrink-0">${getPoiCategoryIcon(poi.type)}</span>
-              <span class="truncate" title="${poi.name}">${poi.name}</span>
-            </div>
-            <div class="text-[11px] text-blue-200/80 font-medium mt-0.5">${poi.type}</div>
-            <div class="text-[10px] text-slate-400 mt-1 border-t border-blue-900/50 pt-1">${poi.city}, ${poi.kec}</div>
-          </div>
-          <div class="pt-1.5 border-t border-blue-900/60">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>Go to Location (Google Maps)</span>
-            </a>
-          </div>
-        </div>
-      ` : `
-        <div class="p-3 text-slate-900 font-sans text-xs min-w-[210px] max-w-[270px] space-y-2">
-          <div>
-            <div class="font-bold text-blue-700 flex items-center gap-1.5 text-xs">
-              <span class="text-sm shrink-0">${getPoiCategoryIcon(poi.type)}</span>
-              <span class="truncate" title="${poi.name}">${poi.name}</span>
-            </div>
-            <div class="text-[11px] text-slate-700 font-medium mt-0.5">${poi.type}</div>
-            <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-200 pt-1">${poi.city}, ${poi.kec}</div>
-          </div>
-          <div class="pt-1.5 border-t border-slate-200">
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 text-center no-underline font-semibold shadow-xs"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>Go to Location (Google Maps)</span>
-            </a>
-          </div>
-        </div>
-      `;
-
-      poiMarker.bindPopup(poiPopupHtml, {
+      // Lazy popup builder (Only evaluates HTML string when clicked)
+      poiMarker.bindPopup(() => buildPoiPopupHtml(poi, isDarkMode), {
         className: isDarkMode ? 'dark-leaflet-popup' : 'light-leaflet-popup',
         maxWidth: 260
       });
 
-      poiLayersRef.current?.addLayer(poiMarker);
+      newPoiGroup.addLayer(poiMarker);
     });
+
+    if (poiLayersRef.current && mapInstanceRef.current.hasLayer(poiLayersRef.current)) {
+      mapInstanceRef.current.removeLayer(poiLayersRef.current);
+    }
+    newPoiGroup.addTo(mapInstanceRef.current);
+    poiLayersRef.current = newPoiGroup;
   }, [pois, selectedPoiTypes, isDarkMode]);
 
   // Counts for display in buttons
