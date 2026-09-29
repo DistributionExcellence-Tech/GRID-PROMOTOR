@@ -731,7 +731,8 @@ export const MapView: React.FC<MapViewProps> = ({
             opacity: strokeOpacity,
             fillColor,
             fillOpacity,
-            className: 'transition-all duration-150'
+            className: 'transition-all duration-150',
+            renderer: canvasRendererRef.current || undefined
           })
         : L.rectangle(grid.bounds, {
             color: strokeColor,
@@ -739,7 +740,8 @@ export const MapView: React.FC<MapViewProps> = ({
             opacity: strokeOpacity,
             fillColor,
             fillOpacity,
-            className: 'transition-all duration-150'
+            className: 'transition-all duration-150',
+            renderer: canvasRendererRef.current || undefined
           });
 
       // Hover feedback

@@ -1633,7 +1633,7 @@ export class DataStore {
     limit?: number;
   }): GridItem[] {
     if (!filters) {
-      return this.grids.slice(0, 5000);
+      return this.grids;
     }
 
     const tr = filters.region && filters.region !== 'ALL' ? filters.region.toUpperCase().trim() : null;
@@ -1699,11 +1699,6 @@ export class DataStore {
 
       matched.push(g);
       if (limit > 0 && matched.length >= limit) break;
-    }
-
-    // Safety cap when no location filter is active
-    if (!tr && !cleanTargetProv && !tc && !targetKec && !cats && !q && matched.length > 6000) {
-      return matched.slice(0, 6000);
     }
 
     return matched;
